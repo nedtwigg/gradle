@@ -24,6 +24,7 @@ import org.gradle.test.fixtures.server.http.BlockingHttpServer
 import org.gradle.util.Requires
 import org.gradle.util.TestPrecondition
 import org.junit.Rule
+import spock.lang.Issue
 
 class DaemonReuseIntegrationTest extends DaemonIntegrationSpec {
     @Rule BlockingHttpServer server = new BlockingHttpServer()
@@ -44,6 +45,46 @@ class DaemonReuseIntegrationTest extends DaemonIntegrationSpec {
 
         then:
         daemons.daemons.size() == 1
+    }
+
+    @Issue("https://github.com/gradle/gradle/issues/17345")
+    def "reused daemon port does not prevent new builds from starting"() {
+        given:
+        executer.run()
+        daemons.daemon.assertIdle()
+        daemons.daemon.kill()
+
+        // Take over the daemon's port. The daemon may take some time to finally shutdown and release the port.
+        def nonDaemonProcess
+
+        ConcurrentTestUtil.poll {
+            nonDaemonProcess = new ServerSocket(daemons.daemon.port)
+        }
+        def thread = new Thread({
+            while (!nonDaemonProcess.closed) {
+                nonDaemonProcess.accept {
+                    // When a client connects, immediately close the connection.
+                    it.close()
+                }
+            }
+        })
+        thread.daemon = true
+        thread.start()
+
+        when:
+        executer.run()
+
+        then:
+        daemons.daemons.size() == 2
+
+        when:
+        executer.withArgument("--status")
+        succeeds()
+        then:
+        outputContains("(unable to communicate with daemon)")
+
+        cleanup:
+        nonDaemonProcess.close()
     }
 
     def "canceled daemon is reused when it becomes available"() {
