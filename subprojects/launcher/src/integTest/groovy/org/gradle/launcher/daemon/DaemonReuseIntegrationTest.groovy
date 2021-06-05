@@ -50,8 +50,10 @@ class DaemonReuseIntegrationTest extends DaemonIntegrationSpec {
     @Issue("https://github.com/gradle/gradle/issues/17345")
     def "reused daemon port does not prevent new builds from starting"() {
         given:
+        // Start a daemon
         executer.run()
         daemons.daemon.assertIdle()
+        // Kill the daemon without letting it shutdown cleanly
         daemons.daemon.kill()
 
         // Take over the daemon's port. The daemon may take some time to finally shutdown and release the port.
@@ -64,6 +66,7 @@ class DaemonReuseIntegrationTest extends DaemonIntegrationSpec {
             while (!nonDaemonProcess.closed) {
                 nonDaemonProcess.accept {
                     // When a client connects, immediately close the connection.
+                    // This causes the launcher to receive an empty result
                     it.close()
                 }
             }
@@ -71,12 +74,13 @@ class DaemonReuseIntegrationTest extends DaemonIntegrationSpec {
         thread.daemon = true
         thread.start()
 
+        // Try to run another build that should try to reuse the previous daemon, fail and then start another daemon
         when:
         executer.run()
-
         then:
         daemons.daemons.size() == 2
 
+        // Check that gradle --status also shows the first daemon is unreachable
         when:
         executer.withArgument("--status")
         succeeds()
