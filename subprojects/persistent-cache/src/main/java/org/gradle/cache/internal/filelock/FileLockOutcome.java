@@ -19,9 +19,9 @@ package org.gradle.cache.internal.filelock;
 import java.nio.channels.FileLock;
 
 public abstract class FileLockOutcome {
-    public static FileLockOutcome LOCK_BY_ANOTHER_PROCESS = new FileLockOutcome() {
+    public static final FileLockOutcome LOCKED_BY_ANOTHER_PROCESS = new FileLockOutcome() {
     };
-    public static FileLockOutcome LOCKED_BY_THIS_PROCES = new FileLockOutcome() {
+    public static final FileLockOutcome LOCKED_BY_THIS_PROCESS = new FileLockOutcome() {
     };
 
     public boolean isLockWasAcquired() {

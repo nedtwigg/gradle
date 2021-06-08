@@ -72,13 +72,13 @@ public class LockInfoAccess {
         try {
             FileLock fileLock = lockFileAccess.getChannel().tryLock(infoRegionPos, INFORMATION_REGION_SIZE - infoRegionPos, shared);
             if (fileLock == null) {
-                return FileLockOutcome.LOCK_BY_ANOTHER_PROCESS;
+                return FileLockOutcome.LOCKED_BY_ANOTHER_PROCESS;
             } else {
                 return FileLockOutcome.acquired(fileLock);
             }
         } catch (OverlappingFileLockException e) {
             // Locked by this process, treat as not acquired
-            return FileLockOutcome.LOCKED_BY_THIS_PROCES;
+            return FileLockOutcome.LOCKED_BY_THIS_PROCESS;
         }
     }
 

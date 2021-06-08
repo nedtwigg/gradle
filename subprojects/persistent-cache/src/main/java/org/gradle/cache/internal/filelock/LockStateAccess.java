@@ -90,12 +90,12 @@ public class LockStateAccess {
         try {
             FileLock fileLock = lockFileAccess.getChannel().tryLock(REGION_START, stateRegionSize, shared);
             if (fileLock == null) {
-                return FileLockOutcome.LOCK_BY_ANOTHER_PROCESS;
+                return FileLockOutcome.LOCKED_BY_ANOTHER_PROCESS;
             } else {
                 return FileLockOutcome.acquired(fileLock);
             }
         } catch (OverlappingFileLockException e) {
-            return FileLockOutcome.LOCKED_BY_THIS_PROCES;
+            return FileLockOutcome.LOCKED_BY_THIS_PROCESS;
         }
     }
 
