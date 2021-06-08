@@ -302,7 +302,7 @@ public class DefaultFileLockManager implements FileLockManager {
             FileLockOutcome lockOutcome = lockStateRegion(lockMode);
             if (!lockOutcome.isLockWasAcquired()) {
                 LockInfo lockInfo = readInformationRegion(newExponentialBackoff(shortTimeoutMs));
-                throw LockTimeoutException.timeout(displayName, operationDisplayName, lockFile, metaDataProvider.getProcessIdentifier(), lockOutcome, lockInfo);
+                throw timeoutException(displayName, operationDisplayName, lockFile, metaDataProvider.getProcessIdentifier(), lockOutcome, lockInfo);
             }
 
             java.nio.channels.FileLock stateRegionLock = lockOutcome.getFileLock();
@@ -335,6 +335,16 @@ public class DefaultFileLockManager implements FileLockManager {
             } catch (Throwable t) {
                 stateRegionLock.release();
                 throw t;
+            }
+        }
+
+        private LockTimeoutException timeoutException(String lockDisplayName, String thisOperation, File lockFile, String thisProcessPid, FileLockOutcome fileLockOutcome, LockInfo lockInfo) {
+            if (fileLockOutcome == FileLockOutcome.LOCKED_BY_THIS_PROCESS) {
+                String message = String.format("Timeout waiting to lock %s. It is currently in use by another Gradle instance.%nOwner PID: %s%nOur PID: %s%nOwner Operation: %s%nOur operation: %s%nLock file: %s", lockDisplayName, lockInfo.pid, thisProcessPid, lockInfo.operation, thisOperation, lockFile);
+                return new LockTimeoutException(message, lockFile);
+            } else {
+                String message = String.format("Timeout waiting to lock %s. It is currently in use by this Gradle process.Owner Operation: %s%nOur operation: %s%nLock file: %s", lockDisplayName, lockInfo.operation, thisOperation, lockFile);
+                return new LockTimeoutException(message, lockFile);
             }
         }
 
