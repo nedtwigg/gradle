@@ -15,47 +15,30 @@
  */
 package org.gradle.cache;
 
+import org.gradle.cache.internal.filelock.FileLockOutcome;
+import org.gradle.cache.internal.filelock.LockInfo;
+
 import java.io.File;
 
 /**
  * Thrown on timeout acquiring a lock on a file.
  */
 public class LockTimeoutException extends RuntimeException {
-    private final String lockDisplayName;
-    private final String ownerPid;
-    private final String requestingPid;
-    private final String ownerOperation;
-    private final String requestingOperation;
     private final File lockFile;
 
-    public LockTimeoutException(String lockDisplayName, String ownerPid, String requestingPid, String ownerOperation, String requestingOperation, File lockFile) {
-        super(String.format("Timeout waiting to lock %s. It is currently in use by another Gradle instance.%nOwner PID: %s%nOur PID: %s%nOwner Operation: %s%nOur operation: %s%nLock file: %s", lockDisplayName, ownerPid, requestingPid, ownerOperation, requestingOperation, lockFile));
-        this.lockDisplayName = lockDisplayName;
-        this.ownerPid = ownerPid;
-        this.requestingPid = requestingPid;
-        this.ownerOperation = ownerOperation;
-        this.requestingOperation = requestingOperation;
+    private LockTimeoutException(String message, File lockFile) {
+        super(message);
         this.lockFile = lockFile;
     }
 
-    public String getLockDisplayName() {
-        return lockDisplayName;
-    }
-
-    public String getOwnerPid() {
-        return ownerPid;
-    }
-
-    public String getRequestingPid() {
-        return requestingPid;
-    }
-
-    public String getOwnerOperation() {
-        return ownerOperation;
-    }
-
-    public String getRequestingOperation() {
-        return requestingOperation;
+    public static LockTimeoutException timeout(String lockDisplayName, String thisOperation, File lockFile, String thisProcessPid, FileLockOutcome fileLockOutcome, LockInfo lockInfo) {
+        if (fileLockOutcome == FileLockOutcome.LOCKED_BY_THIS_PROCES) {
+            String message = String.format("Timeout waiting to lock %s. It is currently in use by another Gradle instance.%nOwner PID: %s%nOur PID: %s%nOwner Operation: %s%nOur operation: %s%nLock file: %s", lockDisplayName, lockInfo.pid, thisProcessPid, lockInfo.operation, thisOperation, lockFile);
+            return new LockTimeoutException(message, lockFile);
+        } else {
+            String message = String.format("Timeout waiting to lock %s. It is currently in use by this Gradle process.Owner Operation: %s%nOur operation: %s%nLock file: %s", lockDisplayName, lockInfo.operation, thisOperation, lockFile);
+            return new LockTimeoutException(message, lockFile);
+        }
     }
 
     public File getLockFile() {
